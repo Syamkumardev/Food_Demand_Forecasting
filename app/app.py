@@ -4,7 +4,7 @@ import numpy as np
 import joblib
 
 st.set_page_config(
-    page_title="Food Demand Forecasting",
+    page_title="Food Demand Forecasting1",
     page_icon="🍽️",
     layout="wide"
 )
