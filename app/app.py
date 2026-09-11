@@ -164,7 +164,7 @@ div[data-testid="stAlert"] {
 
 st.markdown("""
 <div class="hero">
-    <h1>🍽️ Food Demand Forecasting</h1>
+    <h1>🍽️ Food Demand Forecasting1</h1>
     <p>
         Predict food demand and estimate potential surplus or shortage
         using machine learning.
