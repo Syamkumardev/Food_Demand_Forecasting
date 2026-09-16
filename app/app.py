@@ -269,7 +269,7 @@ hr {
 
 st.html("""
 <div class="hero">
-<h1> Food Demand Forecasting</h1>
+<h1>Food Demand Forecasting</h1>
 <p>Predict food demand, estimate potential surplus or shortage,
 and get preparation recommendations using machine learning.</p>
 </div>
