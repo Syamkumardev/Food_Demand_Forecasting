@@ -1,7 +1,7 @@
 pandas
 numpy
 scipy
-scikit-learn
+scikit-learn==1.9.0
 matplotlib
 plotly
 streamlit
