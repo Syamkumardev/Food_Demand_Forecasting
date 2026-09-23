@@ -4,277 +4,317 @@ import numpy as np
 import joblib
 
 
+def calculate_recommended_quantity(predicted_demand, safety_buffer):
+    recommended = predicted_demand * (1 + safety_buffer / 100)
+    return int(np.ceil(round(recommended, 10)))
+
+def calculate_surplus(planned_quantity, predicted_demand):
+    return planned_quantity - predicted_demand
+
+
+def classify_demand(predicted_demand, low_threshold, high_threshold):
+    if predicted_demand < low_threshold:
+        return "Low"
+    elif predicted_demand < high_threshold:
+        return "Medium"
+    else:
+        return "High"
+
+
 st.set_page_config(
     page_title="Food Demand Forecasting",
-    page_icon="🍽️",
+    page_icon="🍽",
     layout="wide"
 )
 
 
+# Load model and preprocessing pipeline
 model = joblib.load("models/food_demand_model.pkl")
 preprocessor = joblib.load("models/preprocessor.pkl")
 
+# Load dataset
 df = pd.read_csv("data/Food demand.csv")
 
 center_options = sorted(df["center_id"].unique())
 meal_options = sorted(df["meal_id"].unique())
 
-
+# Demand classification thresholds
 low_demand_threshold = df["num_orders"].quantile(0.33)
 high_demand_threshold = df["num_orders"].quantile(0.67)
 
 
-st.markdown("""
-<style>
+# CUSTOM STYLING
 
-/* ---------- MAIN CONTAINER ---------- */
+st.markdown(
+    """
+    <style>
 
-.block-container {
-    padding-top: 2rem;
-    padding-bottom: 2rem;
-    padding-left: 3rem;
-    padding-right: 3rem;
-}
+    /* MAIN CONTAINER */
 
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+        padding-left: 3rem;
+        padding-right: 3rem;
+    }
 
-/* ---------- GLOBAL FONT ---------- */
 
-html, body, [class*="css"] {
-    font-family: Inter, -apple-system, BlinkMacSystemFont,
-                 "Segoe UI", sans-serif;
-}
+    /* GLOBAL FONT */
 
+    html, body, [class*="css"] {
+        font-family: Inter, -apple-system, BlinkMacSystemFont,
+                     "Segoe UI", sans-serif;
+    }
 
-/* ---------- HERO ---------- */
 
-.hero {
-    background: linear-gradient(
-        135deg,
-        #667eea 0%,
-        #764ba2 100%
-    );
+    /* HERO  */
 
-    padding: 38px 42px;
-    border-radius: 22px;
-    margin-bottom: 35px;
+    .hero {
+        background: linear-gradient(
+            135deg,
+            #667eea 0%,
+            #764ba2 100%
+        );
 
-    box-shadow:
-        0 8px 30px rgba(102, 126, 234, 0.25);
-}
+        padding: 38px 42px;
+        border-radius: 22px;
+        margin-bottom: 35px;
 
-.hero h1 {
-    font-size: 40px;
-    font-weight: 800;
-    color: white;
+        box-shadow:
+            0 8px 30px rgba(102, 126, 234, 0.25);
+    }
 
-    margin: 0 0 10px 0;
-    line-height: 1.2;
-}
 
-.hero p {
-    color: #eee9ff;
-    font-size: 16px;
-    font-weight: 400;
+    .hero h1 {
+        font-size: 40px;
+        font-weight: 800;
+        color: white;
 
-    margin: 0;
-    line-height: 1.6;
-}
+        margin: 0 0 10px 0;
+        line-height: 1.2;
+    }
 
 
-/* ---------- SECTION TITLE ---------- */
+    .hero p {
+        color: #eee9ff;
+        font-size: 16px;
+        font-weight: 400;
 
-.section-title {
-    font-size: 24px;
-    font-weight: 700;
+        margin: 0;
+        line-height: 1.6;
+    }
 
-    margin-top: 25px;
-    margin-bottom: 20px;
 
-    line-height: 1.3;
-}
+    /* SECTION TITLE */
 
+    .section-title {
+        font-size: 24px;
+        font-weight: 700;
 
-/* ---------- INPUT LABELS ---------- */
+        margin-top: 25px;
+        margin-bottom: 20px;
 
-label {
-    font-size: 14px !important;
-    font-weight: 600 !important;
-}
+        line-height: 1.3;
+    }
 
 
-/* ---------- INPUT BOXES ---------- */
+    /* INPUT LABELS  */
 
-div[data-baseweb="select"] > div {
-    border-radius: 10px;
-}
+    label {
+        font-size: 14px !important;
+        font-weight: 600 !important;
+    }
 
-div[data-testid="stNumberInput"] > div {
-    border-radius: 10px;
-}
 
-div[data-baseweb="select"] input {
-    font-size: 15px;
-}
+    /* INPUT BOXES  */
 
-div[data-testid="stNumberInput"] input {
-    font-size: 15px;
-}
+    div[data-baseweb="select"] > div {
+        border-radius: 10px;
+    }
 
 
-/* ---------- SLIDER ---------- */
+    div[data-testid="stNumberInput"] > div {
+        border-radius: 10px;
+    }
 
-div[data-testid="stSlider"] {
-    margin-top: 10px;
-}
 
+    div[data-baseweb="select"] input {
+        font-size: 15px;
+    }
 
-/* ---------- PREDICT BUTTON ---------- */
 
-div.stButton > button {
-    height: 54px;
+    div[data-testid="stNumberInput"] input {
+        font-size: 15px;
+    }
 
-    border-radius: 12px;
 
-    font-size: 16px;
-    font-weight: 700;
+    /* SLIDER */
 
-    background: linear-gradient(
-        90deg,
-        #667eea,
-        #764ba2
-    );
+    div[data-testid="stSlider"] {
+        margin-top: 10px;
+    }
 
-    color: white;
-    border: none;
 
-    box-shadow:
-        0 5px 18px rgba(102, 126, 234, 0.30);
+    /* PREDICT BUTTON */
 
-    transition: all 0.2s ease;
-}
+    div.stButton > button {
+        height: 54px;
 
-div.stButton > button:hover {
-    transform: translateY(-2px);
+        border-radius: 12px;
 
-    box-shadow:
-        0 8px 24px rgba(102, 126, 234, 0.40);
-}
+        font-size: 16px;
+        font-weight: 700;
 
+        background: linear-gradient(
+            90deg,
+            #667eea,
+            #764ba2
+        );
 
-/* ---------- RESULT CARDS ---------- */
+        color: white;
+        border: none;
 
-.result-card {
-    background: linear-gradient(
-        145deg,
-        #1b2030,
-        #151925
-    );
+        box-shadow:
+            0 5px 18px rgba(102, 126, 234, 0.30);
 
-    border: 1px solid #343b52;
+        transition: all 0.2s ease;
+    }
 
-    border-radius: 16px;
 
-    padding: 24px;
+    div.stButton > button:hover {
+        transform: translateY(-2px);
 
-    min-height: 125px;
+        box-shadow:
+            0 8px 24px rgba(102, 126, 234, 0.40);
+    }
 
-    box-shadow:
-        0 5px 20px rgba(0, 0, 0, 0.18);
-}
 
-.result-label {
-    color: #aab2c2;
+    /*  RESULT CARDS  */
 
-    font-size: 14px;
-    font-weight: 600;
+    .result-card {
+        background: linear-gradient(
+            145deg,
+            #1b2030,
+            #151925
+        );
 
-    margin-bottom: 10px;
-}
+        border: 1px solid #343b52;
 
-.result-value {
-    color: #ffffff;
+        border-radius: 16px;
 
-    font-size: 26px;
-    font-weight: 750;
+        padding: 24px;
 
-    line-height: 1.2;
-}
+        min-height: 125px;
 
+        box-shadow:
+            0 5px 20px rgba(0, 0, 0, 0.18);
+    }
 
-/* ---------- INFO CARDS ---------- */
 
-.info-card {
-    background: linear-gradient(
-        145deg,
-        #1b2030,
-        #151925
-    );
+    .result-label {
+        color: #aab2c2;
 
-    border: 1px solid #343b52;
+        font-size: 14px;
+        font-weight: 600;
 
-    border-radius: 16px;
+        margin-bottom: 10px;
+    }
 
-    padding: 20px;
 
-    min-height: 95px;
+    .result-value {
+        color: #ffffff;
 
-    box-shadow:
-        0 5px 20px rgba(0, 0, 0, 0.18);
-}
+        font-size: 26px;
+        font-weight: 750;
 
-.info-label {
-    color: #aab2c2;
+        line-height: 1.2;
+    }
 
-    font-size: 14px;
-    font-weight: 600;
-}
 
-.info-value {
-    color: #ffffff;
+    /* INFO CARDS  */
 
-    font-size: 21px;
-    font-weight: 700;
+    .info-card {
+        background: linear-gradient(
+            145deg,
+            #1b2030,
+            #151925
+        );
 
-    margin-top: 8px;
+        border: 1px solid #343b52;
 
-    line-height: 1.3;
-}
+        border-radius: 16px;
 
+        padding: 20px;
 
-/* ---------- ALERTS ---------- */
+        min-height: 95px;
 
-div[data-testid="stAlert"] {
-    border-radius: 12px;
-    font-size: 14px;
-}
+        box-shadow:
+            0 5px 20px rgba(0, 0, 0, 0.18);
+    }
 
 
-/* ---------- CAPTION ---------- */
+    .info-label {
+        color: #aab2c2;
 
-.stCaption {
-    color: #8f98aa;
-    font-size: 13px;
-}
+        font-size: 14px;
+        font-weight: 600;
+    }
 
 
-/* ---------- DIVIDER ---------- */
+    .info-value {
+        color: #ffffff;
 
-hr {
-    border-color: #303746;
-}
+        font-size: 21px;
+        font-weight: 700;
 
-</style>
-""", unsafe_allow_html=True)
+        margin-top: 8px;
 
+        line-height: 1.3;
+    }
 
-st.html("""
-<div class="hero">
-<h1>Food Demand Forecasting</h1>
-<p>Predict food demand, estimate potential surplus or shortage,
-and get preparation recommendations using machine learning.</p>
-</div>
-""")
 
+    /* ALERTS */
+
+    div[data-testid="stAlert"] {
+        border-radius: 12px;
+        font-size: 14px;
+    }
+
+
+    /* CAPTION  */
+
+    .stCaption {
+        color: #8f98aa;
+        font-size: 13px;
+    }
+
+
+    /* DIVIDER  */
+
+    hr {
+        border-color: #303746;
+    }
+
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# HERO SECTION
+
+st.html(
+    """
+    <div class="hero">
+        <h1>Food Demand Forecasting</h1>
+        <p>
+            Predict food demand, estimate potential surplus or shortage,
+            and get preparation recommendations using machine learning.
+        </p>
+    </div>
+    """
+)
+
+# INPUT SECTION
 
 st.markdown(
     '<div class="section-title">📋 Enter Details</div>',
@@ -294,12 +334,14 @@ with col1:
         if 99 in center_options else 0
     )
 
+
     meal_id = st.selectbox(
         "Meal ID",
         meal_options,
         index=meal_options.index(2290)
         if 2290 in meal_options else 0
     )
+
 
     week = st.number_input(
         "Week",
@@ -308,6 +350,7 @@ with col1:
         value=120,
         step=1
     )
+
 
     checkout_price = st.number_input(
         "Checkout Price",
@@ -326,6 +369,7 @@ with col2:
         step=1.0
     )
 
+
     emailer_for_promotion = st.selectbox(
         "Email Promotion",
         [0, 1],
@@ -333,12 +377,14 @@ with col2:
         "Yes" if x == 1 else "No"
     )
 
+
     homepage_featured = st.selectbox(
         "Homepage Featured",
         [0, 1],
         format_func=lambda x:
         "Yes" if x == 1 else "No"
     )
+
 
     planned_quantity = st.number_input(
         "Planned Food Quantity",
@@ -360,12 +406,16 @@ safety_buffer = st.slider(
     )
 )
 
+
 st.caption(
     "The safety buffer is a planning assumption and is not part "
     "of the machine learning prediction."
 )
 
+
 st.write("")
+
+# PREDICTION
 
 
 if st.button(
@@ -373,7 +423,7 @@ if st.button(
     use_container_width=True
 ):
 
-
+    # Cyclic week features
     week_sin = np.sin(
         2 * np.pi * week / 145
     )
@@ -383,6 +433,7 @@ if st.button(
     )
 
 
+    # Prepare input data
     input_data = pd.DataFrame({
 
         "week": [week],
@@ -410,44 +461,54 @@ if st.button(
     })
 
 
+    # Transform input using saved preprocessor
     input_encoded = preprocessor.transform(
         input_data
     )
 
 
+    # Predict demand
     predicted_demand = max(
         0,
         model.predict(input_encoded)[0]
     )
 
 
-    recommended_quantity = int(
-        np.ceil(
-            predicted_demand *
-            (1 + safety_buffer / 100)
-        )
+    # Calculate recommended quantity
+    recommended_quantity = calculate_recommended_quantity(
+        predicted_demand,
+        safety_buffer
     )
 
 
-    surplus = (
-        planned_quantity -
+    # Calculate potential surplus / shortage
+    surplus = calculate_surplus(
+        planned_quantity,
         predicted_demand
     )
-    if predicted_demand < low_demand_threshold:
 
-        demand_level = "Low"
+
+    # Classify demand
+    demand_level = classify_demand(
+        predicted_demand,
+        low_demand_threshold,
+        high_demand_threshold
+    )
+
+
+    if demand_level == "Low":
         demand_icon = "🟢"
 
-    elif predicted_demand < high_demand_threshold:
-
-        demand_level = "Medium"
+    elif demand_level == "Medium":
         demand_icon = "🟡"
 
     else:
-
-        demand_level = "High"
         demand_icon = "🔴"
 
+
+    
+    # PREDICTION RESULTS
+     
 
     st.markdown(
         '<div class="section-title">'
@@ -477,7 +538,8 @@ if st.button(
                 </div>
 
             </div>
-            """)
+            """
+        )
 
 
     with result_col2:
@@ -512,7 +574,8 @@ if st.button(
                 </div>
 
             </div>
-            """)
+            """
+        )
 
 
     with result_col3:
@@ -522,7 +585,7 @@ if st.button(
             <div class="result-card">
 
                 <div class="result-label">
-                    🍱 Planned Quantity
+                    🍽 Planned Quantity
                 </div>
 
                 <div class="result-value">
@@ -530,7 +593,8 @@ if st.button(
                 </div>
 
             </div>
-            """)
+            """
+        )
 
 
     with result_col4:
@@ -548,11 +612,14 @@ if st.button(
                 </div>
 
             </div>
-            """)
+            """
+        )
 
 
     st.write("")
 
+
+    # DEMAND LEVEL
 
     st.html(
         f"""
@@ -567,10 +634,13 @@ if st.button(
             </div>
 
         </div>
-        """)
+        """
+    )
 
 
     st.write("")
+
+    # PLANNING RECOMMENDATION
 
 
     st.markdown(
@@ -619,6 +689,7 @@ if st.button(
             "recommended preparation quantity."
         )
 
+    # SURPLUS / SHORTAGE MESSAGE
 
     if surplus > 0:
 
@@ -645,6 +716,8 @@ if st.button(
             "Planned quantity closely matches the predicted demand."
         )
 
+
+    # DEMAND VS PLANNED VS RECOMMENDED
 
     st.markdown(
         '<div class="section-title">'
@@ -678,6 +751,7 @@ if st.button(
         height=400
     )
 
+    # HISTORICAL DEMAND TREND
 
     st.markdown(
         '<div class="section-title">'
@@ -686,12 +760,10 @@ if st.button(
         unsafe_allow_html=True
     )
 
-
     historical_data = df[
         (df["center_id"] == center_id) &
         (df["meal_id"] == meal_id)
     ]
-
 
     if not historical_data.empty:
 
@@ -702,7 +774,6 @@ if st.button(
             .reset_index()
             .sort_values("week")
         )
-
 
         st.line_chart(
             weekly_demand,
@@ -717,8 +788,6 @@ if st.button(
             f"{center_id} and Meal {meal_id}. "
             f"Showing {len(weekly_demand)} available weeks."
         )
-
-
     else:
 
         st.info(
@@ -726,6 +795,7 @@ if st.button(
             "the selected center and meal combination."
         )
 
+    # MODEL INFORMATION
 
     st.markdown(
         '<div class="section-title">'
@@ -755,7 +825,8 @@ if st.button(
                 </div>
 
             </div>
-            """)
+            """
+        )
 
 
     with model_col2:
@@ -773,7 +844,8 @@ if st.button(
                 </div>
 
             </div>
-            """)
+            """
+        )
 
 
     with model_col3:
@@ -791,7 +863,8 @@ if st.button(
                 </div>
 
             </div>
-            """)
+            """
+        )
 
 
     st.caption(
